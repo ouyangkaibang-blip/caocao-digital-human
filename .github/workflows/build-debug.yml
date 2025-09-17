@@ -50,6 +50,15 @@ jobs:
     - name: 📱 Setup Android SDK
       uses: android-actions/setup-android@v2
       
+    - name: 📥 Install required Android packages
+      shell: bash
+      run: |
+        set -euxo pipefail
+        SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+        CMDTOOLS="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+        echo "y" | "$CMDTOOLS" --sdk_root="$SDK_ROOT" --licenses || true
+        "$CMDTOOLS" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+
     - name: ✅ Verify Android SDK
       run: |
         echo "📱 Android SDK info:"
@@ -63,6 +72,15 @@ jobs:
       with:
         java-version: '8'
         distribution: 'adopt'
+
+    - name: 🔧 Configure Gradle memory and settings
+      run: |
+        mkdir -p ~/.gradle
+        cat > ~/.gradle/gradle.properties <<'PROP'
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        org.gradle.daemon=true
+        org.gradle.parallel=true
+        PROP
         
     - name: 📦 Cache Gradle packages
       uses: actions/cache@v3
@@ -102,10 +120,11 @@ jobs:
         chmod +x gradlew
         ls -la gradlew
         
-    - name: 🏗️ Build debug APK (with maximum verbosity)
+    - name: 🏗️ Build debug APK (verbose)
       run: |
         echo "🚀 Starting Gradle build..."
-        ./gradlew assembleDebug --stacktrace --info --debug --scan
+        ./gradlew --version
+        ./gradlew assembleDebug --stacktrace --info --no-daemon
         
     - name: 📱 Check build outputs
       run: |
