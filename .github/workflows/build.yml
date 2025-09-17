@@ -2,7 +2,7 @@ name: Build Hello World APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, minimal-test ]
   workflow_dispatch:
 
 jobs:
