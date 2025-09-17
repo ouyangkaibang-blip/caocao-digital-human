@@ -66,12 +66,12 @@ jobs:
         echo "🏠 ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
         ls -la $ANDROID_HOME/ || echo "Android SDK directory not found"
     
-    # Switch back to JDK 8 for Gradle/AGP build (our project uses AGP 4.x)
-    - name: ☕ Switch to JDK 8 for Gradle build
+    # Switch to JDK 11 for AGP 7.0.x compatibility
+    - name: ☕ Switch to JDK 11 for Gradle build
       uses: actions/setup-java@v4
       with:
-        java-version: '8'
-        distribution: 'adopt'
+        java-version: '11'
+        distribution: 'temurin'
 
     - name: 🔧 Configure Gradle memory and settings
       run: |
