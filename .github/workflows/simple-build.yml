@@ -18,16 +18,24 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       
-    - name: Setup Java
+    # First use Java 17 so sdkmanager runs correctly
+    - name: Setup Java 17 for SDK tools
       uses: actions/setup-java@v4
       with:
-        java-version: '8'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
         
     - name: Setup Android SDK
       run: |
         sudo apt-get update
         sudo apt-get install -y android-sdk
+    
+    # Then switch to Java 8 for Gradle build (AGP 4.x)
+    - name: Switch to Java 8 for Gradle
+      uses: actions/setup-java@v4
+      with:
+        java-version: '8'
+        distribution: 'adopt'
         
     - name: Build
       run: |

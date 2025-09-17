@@ -33,11 +33,12 @@ jobs:
         echo "🧠 Memory info:"
         free -h
         
-    - name: ☕ Set up JDK 8
+    # Use JDK 17 so that sdkmanager (cmdline-tools) can run
+    - name: ☕ Set up JDK 17 (for SDK Manager)
       uses: actions/setup-java@v4
       with:
-        java-version: '8'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
         
     - name: ✅ Verify Java installation
       run: |
@@ -55,6 +56,13 @@ jobs:
         echo "🏠 ANDROID_HOME: $ANDROID_HOME"
         echo "🏠 ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
         ls -la $ANDROID_HOME/ || echo "Android SDK directory not found"
+    
+    # Switch back to JDK 8 for Gradle/AGP build (our project uses AGP 4.x)
+    - name: ☕ Switch to JDK 8 for Gradle build
+      uses: actions/setup-java@v4
+      with:
+        java-version: '8'
+        distribution: 'adopt'
         
     - name: 📦 Cache Gradle packages
       uses: actions/cache@v3
