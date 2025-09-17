@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字人系统</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background-color: #000;
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    /* 主容器 - 16:9竖屏比例 */
+    #main-container {
+      width: 56.25vh; /* 16:9竖屏比例 (9/16 * 100vh) */
+      height: 100vh;
+      max-width: 100vw;
+      position: relative;
+      background-color: #000;
+      overflow: hidden;
+    }
+    
+    /* 数字人视频区域 - 全屏 */
+    #video-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    #digital-human-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    /* 状态指示器 */
+    #status-indicator {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      padding: 24px 48px;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      border-radius: 0px 0px 60px 0px;
+      font-size: 42px;
+      z-index: 150;
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s ease;
+      margin: 0;
+      border: none;
+    }
+    
+    #status-indicator:hover {
+      background-color: rgba(0, 0, 0, 0.9);
+    }
+    
+    .status-idle { background-color: rgba(40, 167, 69, 0.8) !important; }
+    .status-thinking { background-color: rgba(255, 193, 7, 0.8) !important; }
+    .status-speaking { background-color: rgba(0, 123, 255, 0.8) !important; }
+    
+    /* 透明对话覆盖层 */
+    #chat-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40%;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+      pointer-events: none;
+    }
+    
+    /* 对话历史区域 */
+    #chat-history {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 18px;
+      max-width: 80%;
+      backdrop-filter: blur(10px);
+      animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .user-message {
+      background-color: rgba(0, 123, 255, 0.9);
+      color: white;
+      margin-left: auto;
+      text-align: right;
+    }
+    
+    .ai-message {
+      background-color: rgba(255, 255, 255, 0.9);
+      color: #333;
+      margin-right: auto;
+    }
+    
+    .message-header {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    
+    /* 输入区域 */
+    #input-area {
+      padding: 20px;
+      pointer-events: auto;
+    }
+    
+    #user-input {
+      width: 100%;
+      padding: 15px 20px;
+      border: none;
+      border-radius: 25px;
+      font-size: 16px;
+      outline: none;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      color: #333;
+    }
+    
+    #user-input::placeholder {
+      color: #666;
+    }
+    
+    #user-input:focus {
+      background-color: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+    }
+    
+    /* 按钮区域 */
+    #button-area {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    #send-button {
+      background-color: rgba(0, 123, 255, 0.9);
+      color: white;
+      flex: 2;
+    }
+    
+    #send-button:hover {
+      background-color: rgba(0, 123, 255, 1);
+      transform: translateY(-2px);
+    }
+    
+    #send-button:disabled {
+      background-color: rgba(108, 117, 125, 0.6);
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    #interrupt-button {
+      background-color: rgba(220, 53, 69, 0.9);
+      color: white;
+      flex: 1;
+    }
+    
+    #interrupt-button:hover {
+      background-color: rgba(220, 53, 69, 1);
+      transform: translateY(-2px);
+    }
+    
+    #voice-button {
+      background-color: rgba(40, 167, 69, 0.9);
+      color: white;
+      flex: 1;
+      position: relative;
+    }
+    
+    #voice-button.voice-on {
+      background-color: rgba(220, 53, 69, 0.9);
+      animation: pulse 1.5s infinite;
+    }
+    
+    #voice-button.voice-off {
+      background-color: rgba(40, 167, 69, 0.9);
+    }
+    
+    #voice-button:hover {
+      background-color: rgba(40, 167, 69, 1);
+      transform: translateY(-2px);
+    }
+    
+    #voice-button.voice-on:hover {
+      background-color: rgba(220, 53, 69, 1);
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+
+    #settings-button {
+      background-color: rgba(108, 117, 125, 0.9);
+      color: white;
+      flex: 1;
+    }
+    
+    #settings-button:hover {
+      background-color: rgba(108, 117, 125, 1);
+      transform: translateY(-2px);
+    }
+    
+    /* 滚动条样式 */
+    #chat-history::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    #chat-history::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+    
+    #chat-history::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+    
+    #chat-history::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      #main-container {
+        width: 100vw;
+        height: 100vh;
+      }
+      
+      #chat-overlay {
+        height: 45%;
+      }
+      
+      .btn {
+        padding: 10px 16px;
+        font-size: 12px;
+      }
+      
+      #user-input {
+        padding: 12px 16px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 主容器 - 16:9竖屏比例 -->
+  <div id="main-container">
+    <!-- 数字人视频区域 - 全屏背景 -->
+    <div id="video-container">
+      <div id="status-indicator" class="status-idle">待机中</div>
+      <video id="digital-human-video" autoplay loop muted>
+        <source src="/shucai/静止.mp4" type="video/mp4">
+        您的浏览器不支持视频播放。
+      </video>
+      <!-- 用于平滑切换的备用视频 -->
+      <video id="digital-human-video-alt" autoplay loop muted style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none;">
+        <source src="/shucai/静止.mp4" type="video/mp4">
+      </video>
+    </div>
+    
+    <!-- 透明对话覆盖层 -->
+    <div id="chat-overlay">
+      <!-- 对话历史区域 -->
+      <div id="chat-history">
+        <div class="message ai-message">
+          <div class="message-header">曹操</div>
+          <div>您好！我是曹操，有什么想与我讨论的吗？</div>
+        </div>
+      </div>
+      
+      <!-- 输入区域 -->
+      <div id="input-area">
+        <input type="text" id="user-input" placeholder="请输入您的问题..." />
+        <div id="button-area">
+          <button id="send-button" class="btn">发送</button>
+          <button id="voice-button" class="btn voice-off">🎤 语音</button>
+          <button id="interrupt-button" class="btn">打断</button>
+          <button id="settings-button" class="btn" onclick="handleSettings()">设置</button>
+        </div>
+        <div id="network-status" style="display: none; color: orange; font-size: 12px; text-align: center; margin-top: 5px;">
+          ⚠️ 语音识别网络受限，建议使用文字输入 (按回车发送)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自定义模态对话框 -->
+  <div id="custom-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);">
+      <h3 id="modal-title" style="margin-top: 0; color: #333;">标题</h3>
+      <p id="modal-message" style="color: #666; margin: 20px 0;">消息内容</p>
+      <input id="modal-input" type="text" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin: 10px 0; box-sizing: border-box; display: none;">
+      <select id="modal-select" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin: 10px 0; box-sizing: border-box; display: none;"></select>
+      <div style="margin-top: 20px;">
+        <button id="modal-cancel" style="padding: 10px 20px; margin: 0 5px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 5px; cursor: pointer;">取消</button>
+        <button id="modal-ok" style="padding: 10px 20px; margin: 0 5px; border: none; background: #007bff; color: white; border-radius: 5px; cursor: pointer;">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM 元素获取
+    const videoElement = document.getElementById('digital-human-video');
+    const videoElementAlt = document.getElementById('digital-human-video-alt');
+    const chatHistory = document.getElementById('chat-history');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+    const voiceButton = document.getElementById('voice-button');
+    const interruptButton = document.getElementById('interrupt-button');
+    const settingsButton = document.getElementById('settings-button');
+    const statusIndicator = document.getElementById('status-indicator');
+
+    // 应用状态
+    let currentState = 'idle'; // idle, thinking, speaking
+    let isProcessing = false;
+    let isSpeaking = false;
+    
+    // 静止状态定时器管理
+    let idleTimer = null;
+    let isInCalmState = false; // 是否处于平静静止状态
+    let stillVideoPlayCount = 0; // 静止视频已播放次数
+    let hasPlayedWelcome = false; // 是否已播放欢迎语音
+    
+    // 自定义状态文本
+    let customStatusTexts = {
+      idle: '待机中',
+      thinking: '思考中',
+      speaking: '对话中',
+      listening: '聆听中'
+    };
+
+    // 自定义模态对话框函数
+    function showCustomPrompt(title, message, defaultValue = '') {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalInput = document.getElementById('modal-input');
+        const modalSelect = document.getElementById('modal-select');
+        const modalOk = document.getElementById('modal-ok');
+        const modalCancel = document.getElementById('modal-cancel');
+
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalInput.value = defaultValue;
+        modalInput.style.display = 'block';
+        modalSelect.style.display = 'none';
+        
+        modal.style.display = 'flex';
+        modalInput.focus();
+
+        const handleOk = () => {
+          const value = modalInput.value;
+          modal.style.display = 'none';
+          modalOk.removeEventListener('click', handleOk);
+          modalCancel.removeEventListener('click', handleCancel);
+          resolve(value);
+        };
+
+        const handleCancel = () => {
+          modal.style.display = 'none';
+          modalOk.removeEventListener('click', handleOk);
+          modalCancel.removeEventListener('click', handleCancel);
+          resolve(null);
+        };
+
+        modalOk.addEventListener('click', handleOk);
+        modalCancel.addEventListener('click', handleCancel);
+        
+        // 回车键确认
+        modalInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            handleOk();
+          } else if (e.key === 'Escape') {
+            handleCancel();
+          }
+        });
+      });
+    }
+
+    function showCustomSelect(title, message, options) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalInput = document.getElementById('modal-input');
+        const modalSelect = document.getElementById('modal-select');
+        const modalOk = document.getElementById('modal-ok');
+        const modalCancel = document.getElementById('modal-cancel');
+
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalInput.style.display = 'none';
+        modalSelect.style.display = 'block';
+        
+        // 清空并填充选项
+        modalSelect.innerHTML = '';
+        options.forEach((option, index) => {
+          const optionElement = document.createElement('option');
+          optionElement.value = index + 1;
+          optionElement.textContent = option;
+          modalSelect.appendChild(optionElement);
+        });
+        
+        modal.style.display = 'flex';
+        modalSelect.focus();
+
+        const handleOk = () => {
+          const value = modalSelect.value;
+          modal.style.display = 'none';
+          modalOk.removeEventListener('click', handleOk);
+          modalCancel.removeEventListener('click', handleCancel);
+          resolve(value);
+        };
+
+        const handleCancel = () => {
+          modal.style.display = 'none';
+          modalOk.removeEventListener('click', handleOk);
+          modalCancel.removeEventListener('click', handleCancel);
+          resolve(null);
+        };
+
+        modalOk.addEventListener('click', handleOk);
+        modalCancel.addEventListener('click', handleCancel);
+      });
+    }
+    
+    // 语音合成相关
+    let speechSynthesis = window.speechSynthesis;
+    let currentUtterance = null;
+    let selectedVoice = null;
+    let currentAudio = null;           // 当前播放的服务端音频
+    let currentAudioUrl = null;        // 当前音频URL，便于释放
+    let speakToken = 0;                // 递增令牌，保证只播放最新一段
+    
+    // 语音识别相关（改为本地ASR）
+    let speechRecognition = null;      // 仍保留变量名以最小化改动，但不再使用浏览器API
+    let isVoiceEnabled = false;        // 语音输入是否开启
+    let isListening = false;           // 是否正在监听
+    let voiceRecognitionSupported = true; // 使用本地ASR，视为支持
+    let mediaStream = null;            // 麦克风流
+    let audioContextRef = null;        // 音频上下文
+    let sourceRef = null;              // 音频源
+    let processorRef = null;           // 处理器
+    let recordedFloat32 = [];          // 已录制的浮点音频
+    let isAsrRequesting = false;       // 是否正在请求ASR
+    let lastPartialAt = 0;             // 上次部分识别时间
+    let lastPartialText = '';          // 最近一次部分识别文本
+    let accumulatedSilenceMs = 0;      // 静音累计时长
+    let heardAnyVoice = false;         // 是否出现过有效声音
+    const SILENCE_LEVEL = 0.015;       // 静音阈值(均方根)
+    const SILENCE_END_MS = 3000;       // 静音3秒判定结束
+    const ASR_URL = 'http://localhost:3002/asr';
+
+    // 初始化语音识别（本地ASR，无需外网）
+    async function initializeSpeechRecognition() {
+      console.log('初始化本地ASR录音');
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true }
+        });
+        console.log('麦克风权限已获取');
+      } catch (e) {
+        console.error('无法访问麦克风:', e);
+        alert('无法访问麦克风，请检查系统与浏览器权限');
+        voiceButton.disabled = true;
+        return;
+      }
+      console.log('本地ASR初始化完成');
+    }
+
+    // 测试语音识别网络连接
+    async function testSpeechRecognitionConnectivity() {
+      console.log('测试语音识别网络连接...');
+      
+      try {
+        // 尝试访问Google的语音识别服务域名
+        const testUrls = [
+          'https://www.google.com/speech-api/v2/recognize',
+          'https://speech.googleapis.com',
+          'https://www.google.com'
+        ];
+        
+        let accessible = false;
+        for (const url of testUrls) {
+          try {
+            const response = await fetch(url, { 
+              method: 'HEAD', 
+              mode: 'no-cors',
+              timeout: 3000 
+            });
+            accessible = true;
+            console.log(`✓ 可以访问语音识别服务: ${url}`);
+            break;
+          } catch (e) {
+            console.log(`✗ 无法访问: ${url}`);
+          }
+        }
+        
+        if (!accessible) {
+          console.warn('⚠️  语音识别服务可能无法访问，建议使用文字输入');
+          userInput.placeholder = '网络受限，建议使用文字输入 (按回车发送)';
+          
+          // 显示网络状态指示器
+          const networkStatus = document.getElementById('network-status');
+          if (networkStatus) {
+            networkStatus.style.display = 'block';
+          }
+          
+          // 禁用语音按钮并提示
+          voiceButton.disabled = true;
+          voiceButton.textContent = '🎤 网络受限';
+          voiceButton.style.opacity = '0.5';
+          
+          // 添加明显的提示
+          setTimeout(() => {
+            if (!isVoiceEnabled) {
+              addMessage('检测到网络连接问题，语音识别无法使用。请直接输入文字进行对话，按回车键发送。', false);
+            }
+          }, 2000);
+        } else {
+          console.log('✓ 语音识别网络连接正常');
+        }
+      } catch (error) {
+        console.error('网络连接测试失败:', error);
+      }
+    }
+
+    // 初始化语音合成，选择中年男性声音
+    function initializeTTS() {
+      // 等待语音列表加载完成
+      if (speechSynthesis.getVoices().length === 0) {
+        speechSynthesis.addEventListener('voiceschanged', selectMaleVoice);
+      } else {
+        selectMaleVoice();
+      }
+    }
+
+    // 选择中年男性声音
+    function selectMaleVoice() {
+      const voices = speechSynthesis.getVoices();
+      console.log('可用语音:', voices.map(v => `${v.name} - ${v.lang} - ${v.gender || 'unknown'}`));
+      
+      // 优先选择中文男性声音
+      const preferredVoices = [
+        'Microsoft Yunyang - Chinese (Mainland)', // Windows 中文男声
+        'Microsoft Kangkang - Chinese (Mainland)', // Windows 中文男声
+        'Google 普通话（中国大陆）', // Chrome 中文
+        'zh-CN', // 通用中文
+        'Ting-Ting',
+        'Sin-ji',
+      ];
+      
+      for (let preferred of preferredVoices) {
+        const voice = voices.find(v => 
+          v.name.includes(preferred) || 
+          (v.lang.includes('zh') && v.name.toLowerCase().includes('male')) ||
+          (v.lang.includes('zh') && v.name.includes('男'))
+        );
+        if (voice) { selectedVoice = voice; return; }
+      }
+      const chineseVoice = voices.find(v => v.lang.includes('zh'));
+      selectedVoice = chineseVoice || voices[0] || null;
+    }
+
+    // 初始化音频检测
+    async function initAudioDetection() {
+      try {
+        // 请求麦克风权限
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+        
+        // 创建音频上下文
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        microphone = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        
+        analyser.fftSize = 256;
+        microphone.connect(analyser);
+        
+        console.log('音频检测初始化成功');
+        return true;
+      } catch (error) {
+        console.error('音频检测初始化失败:', error);
+        return false;
+      }
+    }
+
+    // 检测音频输入级别
+    function checkAudioLevel() {
+      if (!analyser) return 0;
+      
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteFrequencyData(dataArray);
+      
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      
+      const average = sum / bufferLength;
+      return average;
+    }
+
+    // 将Float32 PCM转为16bit PCM字节
+    function floatTo16BitPCM(float32Array) {
+      const buffer = new ArrayBuffer(float32Array.length * 2);
+      const view = new DataView(buffer);
+      for (let i = 0; i < float32Array.length; i++) {
+        let s = Math.max(-1, Math.min(1, float32Array[i]));
+        view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+      return buffer;
+    }
+
+    // 生成简单WAV(PCM16, 单声道, 16k)
+    function encodeWAVFromFloat32(float32Array, sampleRate) {
+      // 重采样到16k（最简单的抽样法，够用）
+      const targetRate = 16000;
+      const ratio = sampleRate / targetRate;
+      const newLength = Math.floor(float32Array.length / ratio);
+      const resampled = new Float32Array(newLength);
+      for (let i = 0; i < newLength; i++) {
+        resampled[i] = float32Array[Math.floor(i * ratio)] || 0;
+      }
+
+      const pcmBuffer = floatTo16BitPCM(resampled);
+      const wavBuffer = new ArrayBuffer(44 + resampled.length * 2);
+      const view = new DataView(wavBuffer);
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      // RIFF/WAVE 头
+      writeString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + resampled.length * 2, true);
+      writeString(view, 8, 'WAVE');
+      writeString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true); // PCM chunk size
+      view.setUint16(20, 1, true);  // PCM format
+      view.setUint16(22, 1, true);  // mono
+      view.setUint32(24, targetRate, true);
+      view.setUint32(28, targetRate * 2, true); // byte rate
+      view.setUint16(32, 2, true);  // block align
+      view.setUint16(34, 16, true); // bits per sample
+      writeString(view, 36, 'data');
+      view.setUint32(40, resampled.length * 2, true);
+
+      // PCM 数据
+      const pcmView = new Uint8Array(pcmBuffer);
+      new Uint8Array(wavBuffer, 44).set(pcmView);
+      return new Blob([wavBuffer], { type: 'audio/wav' });
+    }
+
+    // 简易中文标点恢复
+    function restoreChinesePunctuation(input) {
+      if (!input) return input;
+      let text = String(input).replace(/\s+/g, '').trim();
+      if (!text) return text;
+
+      // 将英文标点替换为中文
+      text = text.replace(/,/g, '，').replace(/;/g, '；').replace(/!/g, '！').replace(/\?/g, '？');
+
+      // 在连接词前补逗号（避免句首补逗号）
+      const markers = ['然后','但是','不过','而且','所以','因此','同时','另外','还有','以及','可是','然而','如果','因为','比如','例如','首先','其次','最后'];
+      markers.forEach(m => {
+        const reg = new RegExp(`([^，。！？；、\n^])${m}`, 'g');
+        text = text.replace(reg, `$1，${m}`);
+      });
+
+      // 结尾标点：疑问句判定
+      const isQuestion = /(吗|呢|是不是|为何|为什么|怎么|怎样|多少|几点|几时|哪[儿里国种个]|谁|是否|能否|可否|可不可以|好不好|要不要|对不对)$/
+        .test(text) || /^(为什么|怎么|是否|哪|谁|何时|几点|多久|多远)/.test(text);
+      if (!/[。！？?！]$/.test(text)) {
+        text += isQuestion ? '？' : '。';
+      }
+
+      // 合并重复标点
+      text = text.replace(/，{2,}/g, '，').replace(/。{2,}/g, '。').replace(/！！+/g, '！').replace(/？？+/g, '？');
+      return text;
+    }
+
+    function computeRMS(float32) {
+      let sum = 0;
+      for (let i = 0; i < float32.length; i++) {
+        const v = float32[i];
+        sum += v * v;
+      }
+      return Math.sqrt(sum / float32.length);
+    }
+
+    async function requestASRPartial(audioContext, mergedFloat32) {
+      try {
+        isAsrRequesting = true;
+        const wavBlob = encodeWAVFromFloat32(mergedFloat32, audioContext.sampleRate);
+        const form = new FormData();
+        form.append('audio', wavBlob, 'speech.wav');
+        const resp = await fetch(ASR_URL, { method: 'POST', body: form });
+        const data = await resp.json();
+        if (data && data.text) {
+          const text = data.text.trim();
+          if (text) {
+            lastPartialText = text;
+            userInput.value = text;
+            userInput.style.fontStyle = 'italic';
+            userInput.style.opacity = '0.8';
+            console.log('ASR识别结果:', text);
+          }
+        }
+      } catch (e) {
+        console.warn('部分识别失败:', e);
+      } finally {
+        isAsrRequesting = false;
+      }
+    }
+
+    async function startVoiceRecognition() {
+      if (!mediaStream) {
+        await initializeSpeechRecognition();
+        if (!mediaStream) return;
+      }
+      if (isListening) return;
+
+      isListening = true;
+      voiceButton.className = 'btn voice-on';
+      voiceButton.textContent = '🎤 聆听中';
+      userInput.placeholder = '正在聆听您的声音...';
+      
+      // 更新状态指示器
+      statusIndicator.textContent = customStatusTexts.listening;
+      statusIndicator.className = 'status-speaking';
+
+      // 初始化音频图
+      audioContextRef = new (window.AudioContext || window.webkitAudioContext)();
+      sourceRef = audioContextRef.createMediaStreamSource(mediaStream);
+      processorRef = audioContextRef.createScriptProcessor(4096, 1, 1);
+      sourceRef.connect(processorRef);
+      processorRef.connect(audioContextRef.destination);
+
+      // 重置状态
+      recordedFloat32 = [];
+      accumulatedSilenceMs = 0;
+      heardAnyVoice = false;
+      lastPartialText = '';
+      lastPartialAt = 0;
+
+      processorRef.onaudioprocess = async (e) => {
+        if (!isListening) return;
+        const input = e.inputBuffer.getChannelData(0);
+        recordedFloat32.push(new Float32Array(input));
+
+        const rms = computeRMS(input);
+        const frameMs = (input.length / audioContextRef.sampleRate) * 1000;
+        if (rms > SILENCE_LEVEL) {
+          accumulatedSilenceMs = 0;
+          heardAnyVoice = true;
+        } else if (heardAnyVoice) {
+          accumulatedSilenceMs += frameMs;
+        }
+
+        // 节流后的部分识别（每1200ms一次）
+        const now = Date.now();
+        if (!isAsrRequesting && now - lastPartialAt > 1200 && recordedFloat32.length > 0) {
+          const totalLength = recordedFloat32.reduce((s, a) => s + a.length, 0);
+          const merged = new Float32Array(totalLength);
+          let offset = 0; for (const c of recordedFloat32) { merged.set(c, offset); offset += c.length; }
+          lastPartialAt = now;
+          requestASRPartial(audioContextRef, merged);
+        }
+
+        // 静音结束判定
+        if (heardAnyVoice && accumulatedSilenceMs >= SILENCE_END_MS) {
+          finalizeASR();
+        }
+      };
+
+      async function finalizeASR() {
+        if (!isListening) return;
+        isListening = false;
+        try { processorRef.disconnect(); sourceRef.disconnect(); } catch (e) {}
+
+        // 构造最终合并数据
+        const totalLength = recordedFloat32.reduce((s, a) => s + a.length, 0);
+        const merged = new Float32Array(totalLength);
+        let offset = 0; for (const c of recordedFloat32) { merged.set(c, offset); offset += c.length; }
+
+        // 最终识别一次，若失败则使用 partial
+        try {
+          await requestASRPartial(audioContextRef, merged);
+        } catch (e) {}
+
+        voiceButton.className = 'btn voice-off';
+        voiceButton.textContent = '🎤 语音';
+        userInput.style.fontStyle = 'normal';
+        userInput.style.opacity = '1';
+
+        const finalText = lastPartialText && lastPartialText.trim();
+        if (finalText) {
+          const punct = restoreChinesePunctuation(finalText);
+          userInput.value = punct;
+          handleUserInput();
+        } else {
+          userInput.placeholder = '未识别到有效语音，请重试';
+        }
+      }
+    }
+
+    // 停止语音识别
+    function stopVoiceRecognition() {
+      isListening = false;
+      try { if (processorRef) processorRef.disconnect(); } catch (e) {}
+      try { if (sourceRef) sourceRef.disconnect(); } catch (e) {}
+      try { if (audioContextRef) audioContextRef.close(); } catch (e) {}
+      processorRef = null; sourceRef = null; audioContextRef = null;
+      recordedFloat32 = [];
+      // 关闭麦克风
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+      voiceButton.className = 'btn voice-off';
+      voiceButton.textContent = '🎤 语音';
+      userInput.placeholder = '请输入您的问题...';
+      userInput.style.fontStyle = 'normal';
+      userInput.style.opacity = '1';
+    }
+
+    // 切换语音识别状态
+    function toggleVoiceRecognition() {
+      if (!voiceRecognitionSupported) {
+        alert('您的浏览器不支持语音识别功能');
+        return;
+      }
+
+      console.log('切换语音识别状态，当前：enabled=', isVoiceEnabled, 'listening=', isListening);
+
+      if (isVoiceEnabled) {
+        // 关闭语音识别
+        console.log('用户主动关闭语音识别');
+        isVoiceEnabled = false;
+        stopVoiceRecognition();
+        
+        // 立即更新按钮状态
+        voiceButton.className = 'btn voice-off';
+        voiceButton.textContent = '🎤 开始';
+        userInput.placeholder = '请输入您的问题...';
+        
+        console.log('语音识别已关闭');
+      } else {
+        // 开启语音识别
+        console.log('用户主动开启语音识别');
+        isVoiceEnabled = true;
+        
+        // 重置网络错误计数
+        if (speechRecognition) {
+          speechRecognition._networkErrorCount = 0;
+        }
+        
+        // 立即更新按钮状态为准备中
+        voiceButton.className = 'btn voice-off';
+        voiceButton.textContent = '🎤 准备中...';
+        userInput.placeholder = '正在启动语音识别...';
+        
+        startVoiceRecognition();
+        console.log('语音识别启动中...');
+      }
+    }
+
+    // 测试麦克风功能
+    async function testMicrophone() {
+      console.log('=== 开始麦克风测试 ===');
+      
+      try {
+        // 1. 检查浏览器支持
+        console.log('1. 检查浏览器支持...');
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          console.error('浏览器不支持麦克风访问');
+          return;
+        }
+        console.log('✓ 浏览器支持麦克风访问');
+
+        // 2. 请求麦克风权限
+        console.log('2. 请求麦克风权限...');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('✓ 麦克风权限获取成功');
+
+        // 3. 检查音频轨道
+        const audioTracks = stream.getAudioTracks();
+        console.log('3. 音频轨道信息:', audioTracks);
+        if (audioTracks.length === 0) {
+          console.error('✗ 没有找到音频轨道');
+          return;
+        }
+        console.log('✓ 找到', audioTracks.length, '个音频轨道');
+
+        // 4. 检查语音识别支持
+        console.log('4. 检查语音识别支持...');
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+          console.log('✓ 语音识别API可用');
+        } else {
+          console.error('✗ 语音识别API不可用');
+        }
+
+        // 5. 测试音频输入级别
+        console.log('5. 开始测试音频输入级别（请说话）...');
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        let testCount = 0;
+        const testInterval = setInterval(() => {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+          }
+          const average = sum / bufferLength;
+          
+          console.log(`音频级别: ${average.toFixed(2)} ${average > 10 ? '(检测到声音!)' : ''}`);
+          
+          testCount++;
+          if (testCount >= 30) { // 测试3秒
+            clearInterval(testInterval);
+            stream.getTracks().forEach(track => track.stop());
+            console.log('=== 麦克风测试完成 ===');
+          }
+        }, 100);
+
+      } catch (error) {
+        console.error('麦克风测试失败:', error);
+        if (error.name === 'NotAllowedError') {
+          console.error('麦克风权限被拒绝，请在浏览器设置中允许麦克风访问');
+        } else if (error.name === 'NotFoundError') {
+          console.error('没有找到麦克风设备');
+        }
+      }
+    }
+
+    // 停止语音播放（服务端/浏览器两种途径都停止）
+    function stopSpeaking() {
+      // 取消Web Speech
+      if (speechSynthesis && speechSynthesis.speaking) {
+        try { speechSynthesis.cancel(); } catch (e) {}
+      }
+      currentUtterance = null;
+
+      // 停止服务端音频
+      if (currentAudio) {
+        try { currentAudio.pause(); } catch (e) {}
+        currentAudio.src = '';
+        currentAudio = null;
+      }
+      if (currentAudioUrl) {
+        try { URL.revokeObjectURL(currentAudioUrl); } catch (e) {}
+        currentAudioUrl = null;
+      }
+      isSpeaking = false;
+    }
+
+    // 文字转语音播放（只使用后端 edge-tts，避免女性语音混入）
+    async function speakText(text) {
+      const token = ++speakToken;
+      stopSpeaking();
+
+      // 播放语音时暂停语音识别，避免回音干扰
+      const wasListening = isListening;
+      if (isVoiceEnabled && isListening) {
+        stopVoiceRecognition();
+      }
+
+      // 过滤掉动作描述，只播放对话内容
+      const speechText = filterActionText(text);
+      if (!speechText || speechText.trim().length === 0) {
+        console.log('过滤后无内容可播放');
+        return;
+      }
+
+      // 准备视频状态，但不立即切换，等音频开始播放时再切换
+      // 注意：视频状态判断使用原始文本，因为动作描述可能影响表情选择
+      const videoState = getVideoStateFromContent(text);
+      console.log('准备播放语音，目标状态:', videoState, '播放内容:', speechText);
+
+      // 只使用后端 TTS 生成高质量男声，不回退到浏览器语音
+      try {
+        console.log('请求服务端TTS:', speechText);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+        
+        const ttsResp = await fetch('http://localhost:3001/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: speechText }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (ttsResp.ok) {
+          console.log('服务端TTS响应成功');
+          const audioBlob = await ttsResp.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          
+          // 设置音频属性
+          audio.preload = 'auto';
+          audio.volume = 0.9;
+          
+          currentAudio = audio;
+          currentAudioUrl = audioUrl;
+          isSpeaking = true;
+
+          audio.onloadstart = () => {
+            console.log('音频开始加载');
+          };
+
+          audio.oncanplay = () => {
+            console.log('音频可以播放');
+          };
+
+          audio.onplay = () => {
+              console.log('音频开始播放，切换视频状态到:', videoState, 'token:', token, 'speakToken:', speakToken);
+              if (token === speakToken) {
+                // 只在音频真正开始播放时切换视频状态
+                isSpeaking = true; // 确保设置说话状态
+                // 强制切换到说话状态，绕过shouldAllowVideoStateChange检查
+                forceChangeVideoState(videoState);
+                statusIndicator.textContent = customStatusTexts.speaking;
+                statusIndicator.className = 'status-speaking';
+              } else {
+                console.log('音频token不匹配，跳过视频切换');
+              }
+          };
+
+          audio.onended = () => {
+            console.log('音频播放结束，token:', token, 'speakToken:', speakToken);
+            if (token === speakToken) {
+              console.log('音频播放结束，切换回静止状态');
+              isSpeaking = false;
+              try { URL.revokeObjectURL(audioUrl); } catch (e) {}
+              currentAudio = null; 
+              currentAudioUrl = null;
+              statusIndicator.textContent = customStatusTexts.idle;
+              statusIndicator.className = 'status-idle';
+              // 重置静止播放计数器，重新开始循环
+              stillVideoPlayCount = 0;
+              changeVideoState('still');
+              
+              // 语音播放结束后，如果语音识别功能开启，自动恢复监听
+              if (isVoiceEnabled && !isListening) {
+                setTimeout(() => {
+                  if (isVoiceEnabled && !isSpeaking) {
+                    startVoiceRecognition();
+                  }
+                }, 1000); // 延迟1秒再开始监听，避免残留声音干扰
+              }
+            }
+          };
+
+          audio.onerror = (e) => {
+            console.error('音频播放错误:', e);
+            if (token === speakToken) {
+              isSpeaking = false;
+              try { URL.revokeObjectURL(audioUrl); } catch (e) {}
+              currentAudio = null;
+              currentAudioUrl = null;
+              // 播放失败时也回到待机状态
+              statusIndicator.textContent = customStatusTexts.idle;
+              statusIndicator.className = 'status-idle';
+              // 重置静止播放计数器
+              stillVideoPlayCount = 0;
+              changeVideoState('still');
+              
+              // 播放失败时也恢复语音识别
+              if (isVoiceEnabled && !isListening) {
+                setTimeout(() => {
+                  if (isVoiceEnabled && !isSpeaking) {
+                    startVoiceRecognition();
+                  }
+                }, 500);
+              }
+            }
+          };
+
+          // 开始播放
+          await audio.play();
+          console.log('音频播放命令已执行');
+          return;
+        } else {
+          console.error('服务端TTS响应失败:', ttsResp.status);
+        }
+      } catch (err) {
+        console.error('服务端TTS请求失败:', err);
+      }
+
+      // 如果服务端TTS失败，直接回到待机状态，不使用浏览器语音
+      console.log('TTS失败，保持待机状态');
+      if (token === speakToken) {
+        isSpeaking = false;
+        statusIndicator.textContent = '待机中';
+        statusIndicator.className = 'status-idle';
+        // TTS失败时不切换视频，保持当前状态
+      }
+    }
+
+    // Web Speech 回退函数已移除，只使用服务端 edge-tts
+
+    // 应用状态
+    let currentVideoIsMain = true; // true表示主视频在前，false表示备用视频在前
+    
+    // 检查是否应该允许视频状态切换
+    function shouldAllowVideoStateChange(newState) {
+      console.log('检查视频状态切换 - 目标状态:', newState, 'isSpeaking:', isSpeaking, 'isProcessing:', isProcessing, 'currentState:', currentState);
+      
+      // 如果正在说话，只允许切换到说话状态
+      if (isSpeaking && (newState === 'still' || newState === 'calm')) {
+        console.log('拒绝切换：正在说话时不能切换到静止状态');
+        return false;
+      }
+      
+      // 如果不在说话状态，不允许切换到说话状态（除非是真正的音频播放触发）
+      if (!isSpeaking && (newState === 'serious' || newState === 'smile')) {
+        console.log('拒绝切换：不在说话状态时不能切换到说话状态');
+        return false;
+      }
+      
+      // 如果正在处理请求，不允许定时器切换
+      if (isProcessing && (newState === 'calm' || newState === 'still')) {
+        console.log('拒绝切换：正在处理请求时不允许定时器切换');
+        return false;
+      }
+      
+      return true;
+    }
+
+    // 强制切换视频状态（绕过安全检查，用于音频播放时）
+    function forceChangeVideoState(state) {
+      console.log('强制切换视频状态到:', state);
+      executeVideoStateChange(state);
+    }
+
+    // 切换数字人状态视频（双视频交叉淡入淡出）
+    function changeVideoState(state) {
+      // 检查是否应该允许切换
+      if (!shouldAllowVideoStateChange(state)) {
+        return;
+      }
+      
+      executeVideoStateChange(state);
+    }
+    
+    // 执行实际的视频状态切换
+    function executeVideoStateChange(state) {
+      let videoPath = '';
+      let statusText = '';
+      let statusClass = '';
+      
+      console.log('执行视频状态切换到:', state, '调用栈:', new Error().stack.split('\n')[1]);
+      
+      switch(state) {
+        case 'still':
+          videoPath = '/shucai/静止.mp4';
+          statusText = customStatusTexts.idle;
+          statusClass = 'status-idle';
+          currentState = 'idle';
+          isInCalmState = false;
+          break;
+        case 'calm':
+          videoPath = '/shucai/平静静止状态.mp4';
+          statusText = customStatusTexts.idle;
+          statusClass = 'status-idle';
+          currentState = 'idle';
+          isInCalmState = true;
+          break;
+        case 'serious':
+          videoPath = '/shucai/严肃说话.mp4';
+          statusText = customStatusTexts.speaking;
+          statusClass = 'status-speaking';
+          currentState = 'speaking';
+          isInCalmState = false;
+          break;
+        case 'smile':
+          videoPath = '/shucai/微笑说话.mp4';
+          statusText = customStatusTexts.speaking;
+          statusClass = 'status-speaking';
+          currentState = 'speaking';
+          isInCalmState = false;
+          break;
+        default:
+          videoPath = '/shucai/静止.mp4';
+          statusText = customStatusTexts.idle;
+          statusClass = 'status-idle';
+          currentState = 'idle';
+          isInCalmState = false;
+      }
+      
+      // 获取当前显示的视频和隐藏的视频
+      const currentVideo = currentVideoIsMain ? videoElement : videoElementAlt;
+      const nextVideo = currentVideoIsMain ? videoElementAlt : videoElement;
+      
+      // 检查是否需要切换
+      const currentPath = currentVideo.src;
+      const newPath = new URL(videoPath, window.location.href).href;
+      if (currentPath === newPath) {
+        console.log('视频状态相同，无需切换');
+        return;
+      }
+      
+      console.log('开始交叉淡入淡出切换');
+      
+      // 设置下一个视频
+      nextVideo.src = videoPath;
+      nextVideo.load();
+      
+      // 当下一个视频准备好时开始切换
+      nextVideo.oncanplay = () => {
+        nextVideo.play().then(() => {
+          // 开始交叉淡入淡出动画
+          nextVideo.style.transition = 'opacity 0.6s ease-in-out';
+          currentVideo.style.transition = 'opacity 0.6s ease-in-out';
+          
+          // 淡入新视频，淡出旧视频
+          nextVideo.style.opacity = '1';
+          currentVideo.style.opacity = '0';
+          
+          // 动画完成后交换视频角色
+          setTimeout(() => {
+            currentVideoIsMain = !currentVideoIsMain;
+            
+            // 清理过渡效果
+            nextVideo.style.transition = '';
+            currentVideo.style.transition = '';
+            
+            console.log('视频切换完成');
+          }, 600);
+          
+        }).catch(e => {
+          console.warn('新视频播放失败:', e);
+        });
+      };
+      
+      nextVideo.onerror = () => {
+        console.error('新视频加载失败:', videoPath);
+      };
+      
+      // 立即更新状态指示器
+      statusIndicator.textContent = statusText;
+      statusIndicator.className = statusClass;
+      
+      // 管理静止状态定时器
+      manageIdleTimer(state);
+    }
+
+    // 管理静止状态定时器
+    function manageIdleTimer(state) {
+      console.log('管理定时器 - 状态:', state, 'isSpeaking:', isSpeaking, '静止播放次数:', stillVideoPlayCount);
+      
+      // 清除现有定时器
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+        console.log('清除现有定时器');
+      }
+      
+      // 如果是说话状态，不启动定时器，重置计数器
+      if (state === 'serious' || state === 'smile') {
+        console.log('说话状态，不启动定时器，重置计数器');
+        stillVideoPlayCount = 0;
+        return;
+      }
+      
+      // 如果是静止状态，启动定时器
+      if (state === 'still' || state === 'calm') {
+        console.log('启动静止状态定时器');
+        
+        // 根据当前状态设置计数器
+        if (state === 'still' && !isInCalmState) {
+          stillVideoPlayCount = 1; // 刚切换到静止状态，开始计数
+          console.log('开始静止状态循环，当前播放次数:', stillVideoPlayCount);
+        } else if (state === 'calm') {
+          console.log('切换到平静状态，准备播放1次');
+        }
+        
+        // 启动基于视频播放周期的定时器
+        function scheduleNextSwitch() {
+          idleTimer = setTimeout(() => {
+            console.log('定时器触发 - isSpeaking:', isSpeaking, 'currentState:', currentState, 'isInCalmState:', isInCalmState, 'isProcessing:', isProcessing, '静止播放次数:', stillVideoPlayCount);
+            
+            // 只有在完全空闲状态下才切换
+            if (!isSpeaking && !isProcessing && currentState === 'idle') {
+              if (isInCalmState) {
+                // 如果当前是平静状态，播放完毕后切换回静止状态，重置计数器
+                console.log('定时器：平静状态播放完毕，切换回静止状态');
+                stillVideoPlayCount = 1; // 重新开始静止状态计数
+                changeVideoState('still');
+                scheduleNextSwitch();
+              } else {
+                // 如果当前是静止状态
+                if (stillVideoPlayCount < 5) {
+                  // 还没播放够5次，继续播放静止状态
+                  stillVideoPlayCount++;
+                  console.log('定时器：继续播放静止状态，当前次数:', stillVideoPlayCount);
+                  // 不需要切换视频，只是让它继续循环播放
+                  scheduleNextSwitch();
+                } else {
+                  // 已经播放了5次静止状态，切换到平静状态
+                  console.log('定时器：静止状态已播放5次，切换到平静状态');
+                  stillVideoPlayCount = 0; // 重置计数器
+                  changeVideoState('calm');
+                  scheduleNextSwitch();
+                }
+              }
+            } else {
+              console.log('定时器：跳过切换 - isSpeaking:', isSpeaking, 'isProcessing:', isProcessing, 'currentState:', currentState);
+              // 如果条件不满足，1秒后再检查
+              idleTimer = setTimeout(() => {
+                scheduleNextSwitch();
+              }, 1000);
+            }
+          }, 20000); // 20秒，确保18秒视频播放完整
+        }
+        
+        scheduleNextSwitch();
+      }
+    }
+
+    // 过滤文本中的动作描述
+    function filterActionText(text) {
+      if (!text) return text;
+      
+      // 移除各种括号内的动作描述
+      let filteredText = text
+        .replace(/（[^）]*）/g, '')  // 中文圆括号
+        .replace(/\([^)]*\)/g, '')   // 英文圆括号
+        .replace(/【[^】]*】/g, '')   // 中文方括号
+        .replace(/\[[^\]]*\]/g, '')  // 英文方括号
+        .replace(/「[^」]*」/g, '')   // 中文书名号
+        .replace(/『[^』]*』/g, '')   // 中文双书名号
+        .replace(/\*[^*]*\*/g, '')   // 星号包围的动作
+        .replace(/_[^_]*_/g, '')     // 下划线包围的动作
+        .trim();                     // 去除首尾空白
+      
+      // 去除多余的空格
+      filteredText = filteredText.replace(/\s+/g, ' ').trim();
+      
+      console.log('原文本:', text);
+      console.log('过滤后:', filteredText);
+      
+      return filteredText;
+    }
+
+    // 添加消息到对话历史
+    function addMessage(content, isUser = false) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+      
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'message-header';
+      headerDiv.textContent = isUser ? '用户' : '曹操';
+      
+      const contentDiv = document.createElement('div');
+      // 对AI回复进行动作文本过滤
+      const displayText = isUser ? content : filterActionText(content);
+      contentDiv.textContent = displayText;
+      
+      messageDiv.appendChild(headerDiv);
+      messageDiv.appendChild(contentDiv);
+      chatHistory.appendChild(messageDiv);
+      
+      // 滚动到底部
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // 根据内容判断应该使用的视频状态
+    function getVideoStateFromContent(content) {
+      console.log('分析内容:', content);
+      
+      // 严肃话题关键词
+      const seriousKeywords = [
+        '严肃', '重要', '战争', '政治', '军事', '治国', '天下', '统一', '征战',
+        '策略', '决断', '威严', '霸业', '权谋', '朝廷', '敌人', '战略',
+        '抱歉', '无法', '错误', '失败', '问题', '困难', '挑战', '危险'
+      ];
+      
+      // 微笑话题关键词  
+      const smileKeywords = [
+        '好', '您好', '谢谢', '开心', '高兴', '欢迎', '很好', '不错', '优秀',
+        '赞', '棒', '成功', '胜利', '喜欢', '满意', '愉快', '快乐', '幸福',
+        '见到您', '讨论', '交流', '分享', '有趣', '精彩', 'wonderful'
+      ];
+      
+      // 检查严肃关键词
+      for (let keyword of seriousKeywords) {
+        if (content.includes(keyword)) {
+          console.log('检测到严肃关键词:', keyword);
+          return 'serious';
+        }
+      }
+      
+      // 检查微笑关键词
+      for (let keyword of smileKeywords) {
+        if (content.includes(keyword)) {
+          console.log('检测到微笑关键词:', keyword);
+          return 'smile';
+        }
+      }
+      
+      console.log('使用默认微笑状态');
+      // 默认使用微笑状态（更友好）
+      return 'smile';
+    }
+
+    // 调用后端API获取AI回复
+    async function getAIResponse(userMessage) {
+      try {
+        const response = await fetch('http://localhost:3001/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: userMessage })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('API回复来源:', data.source);
+        return data.response;
+        
+      } catch (error) {
+        console.error('API调用失败:', error);
+        // 如果API调用失败，返回默认回复
+        return '抱歉，我现在无法连接到服务器。请确保服务器正在运行，或者稍后再试。';
+      }
+    }
+
+    // 处理用户输入
+    async function handleUserInput() {
+      const message = userInput.value.trim();
+      if (!message || isProcessing) return;
+
+      // 任何新输入都立即打断当前语音与思考，保证只说最新
+      stopSpeaking();
+
+      isProcessing = true;
+      sendButton.disabled = true;
+      sendButton.textContent = '发送中...';
+
+      // 添加用户消息
+      addMessage(message, true);
+      userInput.value = '';
+
+      // 设置思考状态（与状态指示器同步）
+      statusIndicator.textContent = customStatusTexts.thinking;
+      statusIndicator.className = 'status-thinking';
+
+      try {
+        // 获取AI回复
+        const aiResponse = await getAIResponse(message);
+
+        // 添加AI回复并发声（视频切换由speakText函数在音频播放时处理）
+        addMessage(aiResponse);
+        speakText(aiResponse);
+
+      } catch (error) {
+        console.error('处理消息时出错:', error);
+        const errorMessage = '抱歉，我现在无法回答您的问题，请稍后再试。';
+        addMessage(errorMessage);
+        speakText(errorMessage);
+      }
+
+      isProcessing = false;
+      sendButton.disabled = false;
+      sendButton.textContent = '发送';
+    }
+
+    // 打断功能
+    function handleInterrupt() {
+      // 停止语音播放并回待机
+      stopSpeaking();
+      // 重置静止播放计数器
+      stillVideoPlayCount = 0;
+      changeVideoState('still');
+      addMessage('对话已被打断，我已回到待机状态。');
+
+      // 如果正在处理，则停止处理
+      if (isProcessing) {
+        isProcessing = false;
+        sendButton.disabled = false;
+        sendButton.textContent = '发送';
+      }
+
+      // 更新状态指示器
+      statusIndicator.textContent = customStatusTexts.idle;
+      statusIndicator.className = 'status-idle';
+    }
+
+    // 设置功能（使用自定义对话框）
+    async function handleSettings() {
+      console.log('设置按钮被点击');
+      try {
+        const password = await showCustomPrompt('设置密码', '请输入设置密码：');
+        console.log('用户输入的密码:', password);
+        if (password === '123456') { // 临时密码
+        const options = [
+          '测试麦克风功能',
+          '重新初始化语音识别',
+          '查看语音识别状态',
+          '重置网络错误计数',
+          '自定义状态指示器文本',
+          '其他设置（开发中）'
+        ];
+        
+        const choice = await showCustomSelect('设置菜单', '请选择功能：', options);
+        
+        switch(choice) {
+          case '1':
+            testMicrophone();
+            alert('麦克风测试已开始，请查看控制台输出');
+            break;
+          case '2':
+            initializeSpeechRecognition();
+            alert('语音识别已重新初始化');
+            break;
+          case '3':
+            const status = {
+              supported: voiceRecognitionSupported,
+              enabled: isVoiceEnabled,
+              listening: isListening,
+              speechRecognition: !!speechRecognition,
+              networkErrorCount: speechRecognition?._networkErrorCount || 0
+            };
+            console.log('语音识别状态:', status);
+            alert(`语音识别状态：
+支持: ${status.supported}
+启用: ${status.enabled}
+监听中: ${status.listening}
+网络错误次数: ${status.networkErrorCount}`);
+            break;
+          case '4':
+            if (speechRecognition) {
+              speechRecognition._networkErrorCount = 0;
+              console.log('网络错误计数已重置');
+              alert('网络错误计数已重置，可以重新尝试语音功能');
+              
+              // 重置按钮状态
+              if (!isVoiceEnabled) {
+                voiceButton.textContent = '🎤 开始';
+                userInput.placeholder = '请输入您的问题...';
+              }
+            }
+            break;
+          case '5':
+            const statusOptions = [
+              '待机状态文本 (当前: ' + customStatusTexts.idle + ')',
+              '思考状态文本 (当前: ' + customStatusTexts.thinking + ')',
+              '对话状态文本 (当前: ' + customStatusTexts.speaking + ')',
+              '聆听状态文本 (当前: ' + customStatusTexts.listening + ')',
+              '恢复默认文本'
+            ];
+            
+            const statusChoice = await showCustomSelect('状态文本设置', '选择要修改的状态文本：', statusOptions);
+            
+            switch(statusChoice) {
+              case '1':
+                const newIdleText = await showCustomPrompt('修改待机状态', '请输入新的待机状态文本：', customStatusTexts.idle);
+                if (newIdleText && newIdleText.trim()) {
+                  customStatusTexts.idle = newIdleText.trim();
+                  if (currentState === 'idle') {
+                    statusIndicator.textContent = customStatusTexts.idle;
+                  }
+                  alert('待机状态文本已更新');
+                }
+                break;
+              case '2':
+                const newThinkingText = await showCustomPrompt('修改思考状态', '请输入新的思考状态文本：', customStatusTexts.thinking);
+                if (newThinkingText && newThinkingText.trim()) {
+                  customStatusTexts.thinking = newThinkingText.trim();
+                  alert('思考状态文本已更新');
+                }
+                break;
+              case '3':
+                const newSpeakingText = await showCustomPrompt('修改对话状态', '请输入新的对话状态文本：', customStatusTexts.speaking);
+                if (newSpeakingText && newSpeakingText.trim()) {
+                  customStatusTexts.speaking = newSpeakingText.trim();
+                  alert('对话状态文本已更新');
+                }
+                break;
+              case '4':
+                const newListeningText = await showCustomPrompt('修改聆听状态', '请输入新的聆听状态文本：', customStatusTexts.listening);
+                if (newListeningText && newListeningText.trim()) {
+                  customStatusTexts.listening = newListeningText.trim();
+                  alert('聆听状态文本已更新');
+                }
+                break;
+              case '5':
+                customStatusTexts = {
+                  idle: '待机中',
+                  thinking: '思考中',
+                  speaking: '对话中',
+                  listening: '聆听中'
+                };
+                statusIndicator.textContent = customStatusTexts[currentState] || customStatusTexts.idle;
+                alert('状态文本已恢复默认');
+                break;
+            }
+            break;
+          default:
+            alert('设置功能正在开发中...');
+        }
+        } else if (password) {
+          alert('密码错误！');
+        }
+      } catch (error) {
+        console.error('设置功能出错:', error);
+        alert('设置功能出现错误: ' + error.message);
+      }
+    }
+
+    // 事件监听器
+    console.log('绑定事件监听器...');
+    console.log('设置按钮元素:', settingsButton);
+    console.log('设置按钮是否存在:', !!settingsButton);
+    
+    sendButton.addEventListener('click', handleUserInput);
+    voiceButton.addEventListener('click', toggleVoiceRecognition);
+    interruptButton.addEventListener('click', handleInterrupt);
+    
+    if (settingsButton) {
+      settingsButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('设置按钮点击事件触发');
+        handleSettings();
+      });
+      console.log('设置按钮事件监听器已绑定');
+    } else {
+      console.error('设置按钮未找到！');
+    }
+    statusIndicator.addEventListener('click', async () => {
+      console.log('状态指示器被点击');
+      const newText = await showCustomPrompt('修改状态文本', '请输入新的状态文本：', statusIndicator.textContent);
+      if (newText && newText.trim()) {
+        statusIndicator.textContent = newText.trim();
+        // 同时更新对应的自定义文本
+        customStatusTexts[currentState] = newText.trim();
+      }
+    });
+    
+    // 添加键盘快捷键支持
+    userInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleUserInput();
+      }
+    });
+    
+    // 添加全局键盘快捷键
+    document.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + M 切换语音识别
+      if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+        e.preventDefault();
+        toggleVoiceRecognition();
+      }
+      // Escape 键中断当前播放
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleInterrupt();
+      }
+    });
+
+
+    // 初始化
+    console.log('数字人系统已启动');
+    
+    // 设置初始状态
+    statusIndicator.textContent = customStatusTexts.idle;
+    statusIndicator.className = 'status-idle';
+    currentState = 'idle';
+    
+    // 将函数添加到全局作用域
+    window.handleSettings = handleSettings;
+    
+    // 创建一个简单的测试函数
+    window.testSettings = function() {
+      alert('测试设置功能');
+      handleSettings();
+    };
+    
+    // 初始化文字转语音功能
+    initializeTTS();
+    
+    // 初始化语音识别功能
+    initializeSpeechRecognition();
+    
+    // 启动静止状态定时器
+    stillVideoPlayCount = 0; // 初始化计数器
+    changeVideoState('still');
+    
+    // 欢迎语音（延迟播放，确保页面完全加载，但只播放一次）
+    setTimeout(() => {
+      const welcomePlayed = sessionStorage.getItem('welcomePlayed');
+      if (!welcomePlayed) {
+        sessionStorage.setItem('welcomePlayed', 'true');
+        const welcomeMessage = '您好！我是曹操，有什么想与我讨论的吗？';
+        speakText(welcomeMessage);
+        console.log('播放欢迎语音');
+      } else {
+        console.log('本次会话欢迎语音已播放过，跳过');
+      }
+    }, 2000);
+  </script>
+</body>
+</html>

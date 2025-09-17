@@ -1,0 +1,113 @@
+name: Build Digital Human APK (Debug Mode)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🔍 Checkout code
+      uses: actions/checkout@v3
+      
+    - name: 📋 Show environment info
+      run: |
+        echo "🖥️ Runner OS: ${{ runner.os }}"
+        echo "🏠 Runner workspace: ${{ github.workspace }}"
+        echo "📁 Current directory: $(pwd)"
+        echo "📂 Directory contents:"
+        ls -la
+        echo "☕ Java version check:"
+        java -version || echo "Java not found"
+        echo "🐧 System info:"
+        uname -a
+        echo "💾 Disk space:"
+        df -h
+        echo "🧠 Memory info:"
+        free -h
+        
+    - name: ☕ Set up JDK 8
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'adopt'
+        
+    - name: ✅ Verify Java installation
+      run: |
+        echo "☕ Java version after setup:"
+        java -version
+        echo "📍 JAVA_HOME: $JAVA_HOME"
+        echo "🛤️ PATH: $PATH"
+        
+    - name: 📱 Setup Android SDK
+      uses: android-actions/setup-android@v2
+      
+    - name: ✅ Verify Android SDK
+      run: |
+        echo "📱 Android SDK info:"
+        echo "🏠 ANDROID_HOME: $ANDROID_HOME"
+        echo "🏠 ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        ls -la $ANDROID_HOME/ || echo "Android SDK directory not found"
+        
+    - name: 📦 Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: 🔍 Check Gradle files
+      run: |
+        echo "📁 Project structure:"
+        find . -name "*.gradle" -o -name "gradlew*" -o -name "gradle-wrapper.*" | head -20
+        echo "🔧 Gradle wrapper properties:"
+        cat gradle/wrapper/gradle-wrapper.properties || echo "gradle-wrapper.properties not found"
+        echo "📋 Root build.gradle:"
+        cat build.gradle || echo "build.gradle not found"
+        
+    - name: 🔑 Grant execute permission for gradlew
+      run: |
+        chmod +x gradlew
+        ls -la gradlew
+        
+    - name: 🏗️ Build debug APK (with maximum verbosity)
+      run: |
+        echo "🚀 Starting Gradle build..."
+        ./gradlew assembleDebug --stacktrace --info --debug --scan
+        
+    - name: 📱 Check build outputs
+      run: |
+        echo "🔍 Looking for APK files..."
+        find . -name "*.apk" -type f
+        echo "📂 Build directory structure:"
+        ls -la app/build/ || echo "app/build/ not found"
+        ls -la app/build/outputs/ || echo "app/build/outputs/ not found"
+        ls -la app/build/outputs/apk/ || echo "app/build/outputs/apk/ not found"
+        ls -la app/build/outputs/apk/debug/ || echo "app/build/outputs/apk/debug/ not found"
+        
+    - name: 📤 Upload APK as artifact
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: DigitalHuman-debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
+        
+    - name: 📤 Upload build logs on failure
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: build-logs
+        path: |
+          **/*.log
+          build/
+          app/build/
