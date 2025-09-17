@@ -1,0 +1,66 @@
+name: Self-contained Android Build (no marketplace actions)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Show runner info
+        run: |
+          echo "Runner: $(uname -a)"
+          echo "Workspace: $GITHUB_WORKSPACE"
+          df -h
+          free -h || true
+
+      - name: Checkout via git (no actions)
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          rm -rf repo
+          git clone --depth=1 https://x-access-token:${TOKEN}@github.com/${REPO}.git repo
+          ls -la repo
+
+      - name: Install JDK 11
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-11-jdk wget unzip curl ca-certificates git
+          java -version
+
+      - name: Install Android SDK cmdline-tools and build-tools
+        env:
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+        run: |
+          set -euxo pipefail
+          mkdir -p "$ANDROID_SDK_ROOT"
+          cd "$ANDROID_SDK_ROOT"
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdtools.zip
+          unzip -q cmdtools.zip -d .
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/ || true
+          yes | cmdline-tools/latest/bin/sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+          echo "y" | cmdline-tools/latest/bin/sdkmanager --licenses --sdk_root="$ANDROID_SDK_ROOT" || true
+
+      - name: Build debug APK
+        env:
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+          ANDROID_HOME: ${{ github.workspace }}/android-sdk
+        run: |
+          set -euxo pipefail
+          cd repo
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug
+          echo "APK search:" && find app -name "*.apk" -type f -maxdepth 4 || true
+
+      - name: Print next steps
+        if: always()
+        run: |
+          echo "如果上一步输出中已经找到了 app-debug.apk，说明构建成功。"
+          echo "在 Actions 权限受限的仓库下，上传制品可能失败；可以在日志中查看 APK 路径并在后续步骤改用官方 upload-artifact action 或发布为 release 资产。"
+
+
