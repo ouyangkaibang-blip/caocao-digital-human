@@ -57,7 +57,10 @@ jobs:
         SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
         CMDTOOLS="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
         echo "y" | "$CMDTOOLS" --sdk_root="$SDK_ROOT" --licenses || true
-        "$CMDTOOLS" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+        "$CMDTOOLS" --sdk_root="$SDK_ROOT" \
+          "platform-tools" \
+          "platforms;android-30" "build-tools;30.0.3" \
+          "platforms;android-31" "build-tools;31.0.0"
 
     - name: ✅ Verify Android SDK
       run: |
@@ -124,7 +127,7 @@ jobs:
       run: |
         echo "🚀 Starting Gradle build..."
         ./gradlew --version
-        ./gradlew assembleDebug --stacktrace --info --no-daemon
+        ./gradlew assembleDebug --stacktrace --info --warning-mode all --no-daemon
         
     - name: 📱 Check build outputs
       run: |
