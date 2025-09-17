@@ -39,6 +39,12 @@ jobs:
         
     - name: Build
       run: |
+        # Verify gradle wrapper jar is valid; replace if needed
+        if ! jar tf gradle/wrapper/gradle-wrapper.jar | grep -q GradleWrapperMain; then
+          echo "gradle-wrapper.jar invalid or missing, redownloading..."
+          mkdir -p gradle/wrapper
+          curl -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v7.0.2/gradle/wrapper/gradle-wrapper.jar
+        fi
         chmod +x gradlew
         ./gradlew assembleDebug --no-daemon --stacktrace
         

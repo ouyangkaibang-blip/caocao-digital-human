@@ -82,6 +82,20 @@ jobs:
         cat gradle/wrapper/gradle-wrapper.properties || echo "gradle-wrapper.properties not found"
         echo "📋 Root build.gradle:"
         cat build.gradle || echo "build.gradle not found"
+        echo "📦 gradle-wrapper.jar size:"
+        ls -lh gradle/wrapper/gradle-wrapper.jar || true
+        echo "📦 gradle-wrapper.jar content (first lines):"
+        (jar tf gradle/wrapper/gradle-wrapper.jar | head -20) || true
+
+    - name: 🔧 Ensure valid Gradle wrapper JAR
+      run: |
+        set -euxo pipefail
+        if ! jar tf gradle/wrapper/gradle-wrapper.jar | grep -q GradleWrapperMain; then
+          echo "gradle-wrapper.jar invalid or missing, redownloading..."
+          mkdir -p gradle/wrapper
+          curl -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v7.0.2/gradle/wrapper/gradle-wrapper.jar
+          jar tf gradle/wrapper/gradle-wrapper.jar | grep GradleWrapperMain
+        fi
         
     - name: 🔑 Grant execute permission for gradlew
       run: |
