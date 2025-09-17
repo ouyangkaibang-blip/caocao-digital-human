@@ -1,0 +1,22 @@
+name: Minimal Test Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Test basic commands
+      run: |
+        echo "Testing basic functionality..."
+        pwd
+        ls -la
+        echo "Java check:"
+        which java || echo "Java not found"
+        echo "Environment:"
+        env | head -10
+        echo "Test completed successfully!"
